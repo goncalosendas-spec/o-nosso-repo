@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Matriz Impacto × Esforço</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Layout: cabeçalho e destaque sobre azul; formulário à esquerda, matriz à direita; lista de prioridades por baixo */
+:root {
+  /* Identidade JUNITEC */
+  --azul: #175FAA;
+  --azul-fundo-2: #13539A;
+  --azul-escuro: #0944A1;
+  --ciano: #74D1EF;
+  --claro: #F6F6F6;
+  --branco: #FFFFFF;
+  --texto: #3D4F6B;
+  --texto-suave: #5E6F88;
+  --sobre-azul: #E2EEFF;
+  --filete-azul: #4D85C2;
+  --filete-claro: #C9DAEE;
+
+  /* Quadrantes: fundo, cor do ponto, texto */
+  --q1-fundo: #E3F5EC; --q1: #13804F; --q1-texto: #0D5E3A;
+  --q2-fundo: #E2EEFF; --q2: #0944A1; --q2-texto: #0944A1;
+  --q3-fundo: #FFF2D4; --q3: #9A5F08; --q3-texto: #74470A;
+  --q4-fundo: #FCE3E0; --q4: #B3362D; --q4-texto: #8E2A23;
+
+  --fonte: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--azul);
+  color: var(--sobre-azul);
+  font-family: var(--fonte);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.pagina {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 36px 28px;
+  display: grid;
+  gap: 24px;
+}
+
+/* ---------- Cabeçalho ---------- */
+.topo h1 {
+  margin: 0;
+  color: var(--claro);
+  font-weight: 700;
+  font-size: clamp(26px, 4.2vw, 40px);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.barra { width: 120px; height: 6px; border-radius: 3px; background: var(--ciano); margin: 14px 0 16px; }
+.lead { margin: 0; max-width: 64ch; color: var(--sobre-azul); font-size: 16px; }
+.notas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.nota {
+  font-size: 12.5px;
+  color: var(--sobre-azul);
+  border: 1px solid var(--filete-azul);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+.nota.aviso { border-color: var(--ciano); color: var(--claro); }
+
+/* ---------- Destaque (resultado principal) ---------- */
+.destaque {
+  background: var(--azul-fundo-2);
+  border: 1px solid var(--filete-azul);
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 24px;
+  align-items: center;
+}
+.destaque .rotulo {
+  font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sobre-azul);
+}
+.destaque .nome-top {
+  margin: 4px 0 6px;
+  font-size: clamp(20px, 2.6vw, 26px);
+  font-weight: 700;
+  color: var(--claro);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.destaque .detalhe { margin: 0; color: var(--sobre-azul); font-size: 14px; }
+.destaque .formula { margin: 8px 0 0; color: var(--sobre-azul); font-size: 12.5px; opacity: .9; }
+.resultado { text-align: right; }
+.resultado .numero {
+  font-size: clamp(52px, 8vw, 80px);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ciano);
+  font-variant-numeric: tabular-nums;
+}
+.resultado .de { font-size: 20px; font-weight: 600; color: var(--sobre-azul); }
+.resultado .legenda-num { display: block; font-size: 12px; color: var(--sobre-azul); margin-top: 4px; }
+
+/* ---------- Grelha principal ---------- */
+.grelha {
+  display: grid;
+  grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.cartao {
+  background: var(--claro);
+  color: var(--texto);
+  border-radius: 12px;
+  padding: 22px;
+  min-width: 0;
+}
+.cartao h2 { margin: 0; color: var(--azul); font-weight: 700; font-size: 19px; }
+.cartao .sub { margin: 4px 0 0; font-size: 13.5px; color: var(--texto-suave); }
+.cabeca-cartao { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 18px; }
+
+/* ---------- Formulário ---------- */
+form { display: grid; gap: 16px; }
+.campo { display: grid; gap: 6px; }
+.campo > label, fieldset legend {
+  font-size: 13px; font-weight: 600; color: var(--azul);
+}
+.dica { font-size: 12px; color: var(--texto-suave); font-weight: 400; }
+input[type="text"], textarea, select {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  color: var(--texto);
+  background: var(--branco);
+  border: 1px solid var(--filete-claro);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+textarea { resize: vertical; min-height: 76px; }
+input[type="text"]:focus, textarea:focus, select:focus {
+  outline: 2px solid var(--azul); outline-offset: 1px; border-color: var(--azul);
+}
+fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; min-width: 0; }
+fieldset legend { padding: 0; margin-bottom: 6px; display: flex; justify-content: space-between; width: 100%; gap: 8px; flex-wrap: wrap; }
+.escala { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.escala input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.escala label {
+  display: block;
+  text-align: center;
+  padding: 9px 0;
+  border: 1px solid var(--filete-claro);
+  border-radius: 8px;
+  background: var(--branco);
+  color: var(--texto);
+  font-weight: 700;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: background .15s, border-color .15s;
+}
+.escala label:hover { border-color: var(--azul); }
+.escala input:checked + label { background: var(--ciano); border-color: var(--ciano); color: var(--azul-escuro); }
+.escala input:focus-visible + label { outline: 2px solid var(--azul-escuro); outline-offset: 2px; }
+
+.previa {
+  border: 1px dashed var(--filete-claro);
+  background: var(--branco);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center;
+}
+.previa strong { color: var(--azul-escuro); font-variant-numeric: tabular-nums; }
+.erro { margin: 0; color: var(--q4-texto); font-size: 13px; font-weight: 600; }
+
+.acoes-form { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---------- Botões ---------- */
+.btn {
+  font: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.btn:focus-visible { outline: 2px solid var(--azul-escuro); outline-offset: 2px; }
+.btn-principal { background: var(--ciano); color: var(--azul-escuro); border-color: var(--ciano); }
+.btn-principal:hover { background: #8ddaf3; }
+.btn-sec { background: transparent; color: var(--azul); border-color: var(--filete-claro); }
+.btn-sec:hover { border-color: var(--azul); background: var(--branco); }
+.btn-sec.armado { background: var(--azul); color: var(--branco); border-color: var(--azul); }
+.btn-perigo { background: transparent; color: var(--q4-texto); border-color: #EBC3BF; }
+.btn-perigo:hover { background: var(--q4-fundo); }
+.btn-perigo.armado { background: var(--q4); color: var(--branco); border-color: var(--q4); }
+.btn-pequeno { padding: 6px 11px; font-size: 13px; }
+
+/* ---------- Matriz ---------- */
+.matriz-wrap { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 6px; }
+.eixo-titulo {
+  font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--azul);
+}
+.eixo-y { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; align-self: center; }
+.eixo-x { text-align: center; margin-top: 6px; padding-left: 28px; }
+.matriz {
+  display: grid;
+  grid-template-columns: 22px repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(72px, auto)) 24px;
+}
+.tick {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; color: var(--texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+.celula {
+  padding: 5px;
+  display: flex; flex-direction: column; gap: 4px;
+  border-right: 1px solid var(--branco);
+  border-bottom: 1px solid var(--branco);
+  min-width: 0;
+}
+.celula.q1 { background: var(--q1-fundo); }
+.celula.q2 { background: var(--q2-fundo); }
+.celula.q3 { background: var(--q3-fundo); }
+.celula.q4 { background: var(--q4-fundo); }
+.celula.fronteira-x { border-left: 3px solid var(--azul); }
+.celula.fronteira-y { border-top: 3px solid var(--azul); }
+.rotulo-q { font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; line-height: 1.2; }
+.q1 .rotulo-q { color: var(--q1-texto); }
+.q2 .rotulo-q { color: var(--q2-texto); }
+.q3 .rotulo-q { color: var(--q3-texto); }
+.q4 .rotulo-q { color: var(--q4-texto); }
+.pontos { display: flex; flex-wrap: wrap; gap: 4px; }
+.ponto {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid var(--branco);
+  color: var(--branco);
+  font: 700 12px/1 var(--fonte);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  padding: 0;
+  transition: transform .15s;
+}
+.ponto:hover { transform: scale(1.12); }
+.ponto:focus-visible { outline: 3px solid var(--azul-escuro); outline-offset: 1px; }
+.ponto.q1, .rank.q1, .amostra.q1 { background: var(--q1); }
+.ponto.q2, .rank.q2, .amostra.q2 { background: var(--q2); }
+.ponto.q3, .rank.q3, .amostra.q3 { background: var(--q3); }
+.ponto.q4, .rank.q4, .amostra.q4 { background: var(--q4); }
+.ponto.ativo { outline: 3px solid var(--ciano); outline-offset: 1px; }
+
+.legenda { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+.leg-item { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 10px 12px; border-radius: 8px; }
+.leg-item.q1 { background: var(--q1-fundo); }
+.leg-item.q2 { background: var(--q2-fundo); }
+.leg-item.q3 { background: var(--q3-fundo); }
+.leg-item.q4 { background: var(--q4-fundo); }
+.amostra { width: 14px; height: 14px; border-radius: 50%; }
+.leg-nome { font-weight: 700; font-size: 13.5px; color: var(--texto); }
+.leg-regra { grid-column: 2 / 3; font-size: 12px; color: var(--texto-suave); }
+.leg-num { grid-row: 1 / 3; grid-column: 3; font-size: 24px; font-weight: 800; color: var(--azul-escuro); font-variant-numeric: tabular-nums; }
+.regra-limite { margin: 12px 0 0; font-size: 12.5px; color: var(--texto-suave); }
+
+/* ---------- Lista de prioridades ---------- */
+.barra-ferramentas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.barra-ferramentas select { width: auto; min-width: 180px; padding: 8px 10px; font-size: 14px; }
+.grupo { margin-top: 18px; }
+.grupo-titulo {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 4px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--azul);
+}
+.grupo-titulo .contagem { color: var(--texto-suave); font-weight: 600; }
+.lista { list-style: none; margin: 0; padding: 0; }
+.item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 4px 14px;
+  padding: 14px 8px;
+  border-top: 1px solid var(--filete-claro);
+  align-items: start;
+  border-radius: 6px;
+}
+.item.ativo { background: var(--branco); }
+.rank {
+  width: 32px; height: 32px; border-radius: 50%;
+  color: var(--branco); font-weight: 700; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.item h4 { margin: 3px 0 4px; font-size: 16px; font-weight: 700; color: var(--azul); overflow-wrap: anywhere; }
+.item .desc { margin: 0 0 8px; font-size: 14px; color: var(--texto); max-width: 70ch; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip {
+  font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--filete-claro); color: var(--texto); background: var(--branco);
+  font-variant-numeric: tabular-nums;
+}
+.chip.q1 { background: var(--q1-fundo); border-color: transparent; color: var(--q1-texto); }
+.chip.q2 { background: var(--q2-fundo); border-color: transparent; color: var(--q2-texto); }
+.chip.q3 { background: var(--q3-fundo); border-color: transparent; color: var(--q3-texto); }
+.chip.q4 { background: var(--q4-fundo); border-color: transparent; color: var(--q4-texto); }
+.chip.melhor { background: var(--ciano); border-color: var(--ciano); color: var(--azul-escuro); }
+.chip.exemplo { border-style: dashed; color: var(--texto-suave); }
+.lado { display: grid; justify-items: end; gap: 10px; }
+.pontuacao { font-size: 26px; font-weight: 800; color: var(--azul-escuro); line-height: 1; font-variant-numeric: tabular-nums; }
+.pontuacao small { font-size: 13px; font-weight: 600; color: var(--texto-suave); }
+.acoes-item { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.confirmar { font-size: 13px; font-weight: 600; color: var(--q4-texto); align-self: center; }
+.vazio {
+  margin-top: 16px; padding: 22px; text-align: center;
+  border: 1px dashed var(--filete-claro); border-radius: 8px; color: var(--texto-suave);
+}
+
+.painel-csv { margin-top: 16px; display: grid; gap: 8px; }
+.painel-csv textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; min-height: 140px; }
+
+.estado-guardar { font-size: 12.5px; color: var(--texto-suave); margin: 14px 0 0; }
+
+/* ---------- Rodapé e aviso ---------- */
+footer { text-align: center; font-size: 12px; color: var(--sobre-azul); padding-top: 4px; }
+.aviso-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  background: var(--azul-escuro);
+  color: var(--claro);
+  border: 1px solid var(--ciano);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  max-width: calc(100% - 32px);
+  z-index: 20;
+}
+
+/* ---------- Telemóvel ---------- */
+@media (max-width: 860px) {
+  .grelha { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .pagina { padding-block: 24px 24px; }
+  .destaque { grid-template-columns: minmax(0, 1fr); padding: 18px; }
+  .resultado { text-align: left; }
+  .cartao { padding: 16px; }
+  .matriz { grid-template-rows: repeat(5, minmax(60px, auto)) 22px; }
+  .rotulo-q { font-size: 8.5px; }
+  .ponto { width: 24px; height: 24px; font-size: 11px; }
+  .legenda { grid-template-columns: minmax(0, 1fr); }
+  .item { grid-template-columns: 32px minmax(0, 1fr); }
+  .lado { grid-column: 2; justify-items: start; grid-auto-flow: column; align-items: center; }
+  .barra-ferramentas select { min-width: 0; flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+<div class="pagina">
+
+  <!-- Cabeçalho -->
+  <header class="topo">
+    <h1>Matriz Impacto × Esforço</h1>
+    <div class="barra" aria-hidden="true"></div>
+    <p class="lead">Ferramenta para os consultores da JUNITEC organizarem ideias e melhorias de um projeto e decidirem por onde começar.</p>
+    <div class="notas">
+      <span class="nota aviso">Abre com dados de exemplo de um cliente fictício. Edita ou apaga à vontade.</span>
+      <span class="nota" id="notaArmazenamento">As ideias ficam guardadas neste navegador.</span>
+    </div>
+  </header>
+
+  <!-- Resultado principal: a ideia a avançar primeiro -->
+  <section class="destaque" aria-live="polite" aria-label="Ideia com maior prioridade">
+    <div>
+      <div class="rotulo">Próxima ideia a avançar</div>
+      <p class="nome-top" id="destNome">Ainda sem ideias</p>
+      <p class="detalhe" id="destDetalhe">Adiciona uma ideia para ver a prioridade.</p>
+      <p class="formula">Pontuação de prioridade = impacto × (6 − esforço). Máximo 25.</p>
+    </div>
+    <div class="resultado">
+      <span class="numero" id="destNumero">–</span><span class="de">/25</span>
+      <span class="legenda-num" id="destQuadrante">&nbsp;</span>
+    </div>
+  </section>
+
+  <main class="grelha">
+
+    <!-- Formulário: adicionar e editar -->
+    <section class="cartao" id="cartaoForm" aria-labelledby="formTitulo">
+      <div class="cabeca-cartao">
+        <div>
+          <h2 id="formTitulo">Nova ideia</h2>
+          <p class="sub" id="formSub">Descreve a ideia e avalia-a de 1 a 5.</p>
+        </div>
+      </div>
+      <form id="form" novalidate>
+        <div class="campo">
+          <label for="nome">Nome</label>
+          <input type="text" id="nome" maxlength="80" placeholder="Ex.: Automatizar relatório mensal" autocomplete="off">
+        </div>
+        <div class="campo">
+          <label for="descricao">Descrição <span class="dica">(opcional)</span></label>
+          <textarea id="descricao" maxlength="300" placeholder="O que muda e para quem"></textarea>
+        </div>
+        <div class="campo">
+          <label for="categoria">Categoria</label>
+          <input type="text" id="categoria" list="listaCategorias" maxlength="40" placeholder="Escolhe ou escreve uma" autocomplete="off">
+          <datalist id="listaCategorias">
+            <option value="Processos"></option>
+            <option value="Tecnologia"></option>
+            <option value="Marketing"></option>
+            <option value="Finanças"></option>
+            <option value="Pessoas"></option>
+            <option value="Cliente"></option>
+            <option value="Operações"></option>
+          </datalist>
+        </div>
+
+        <fieldset>
+          <legend><span>Impacto esperado</span><span class="dica">1 mínimo · 5 muito alto</span></legend>
+          <div class="escala" id="escalaImpacto"></div>
+        </fieldset>
+        <fieldset>
+          <legend><span>Esforço necessário</span><span class="dica">1 muito fácil · 5 muito exigente</span></legend>
+          <div class="escala" id="escalaEsforco"></div>
+        </fieldset>
+
+        <div class="previa" id="previa" aria-live="polite"></div>
+        <p class="erro" id="erro" hidden></p>
+
+        <div class="acoes-form">
+          <button type="submit" class="btn btn-principal" id="btnSubmeter">Adicionar ideia</button>
+          <button type="button" class="btn btn-sec" id="btnCancelar" hidden>Cancelar edição</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Matriz 2×2 -->
+    <section class="cartao" aria-labelledby="matrizTitulo">
+      <div class="cabeca-cartao">
+        <div>
+          <h2 id="matrizTitulo">Matriz de prioridades</h2>
+          <p class="sub">Toca num ponto para editar a ideia. O número é a posição na lista.</p>
+        </div>
+      </div>
+      <div class="matriz-wrap">
+        <div class="eixo-titulo eixo-y">Impacto ↑</div>
+        <div>
+          <div class="matriz" id="matriz" role="group" aria-label="Matriz impacto por esforço"></div>
+          <div class="eixo-titulo eixo-x">Esforço →</div>
+        </div>
+      </div>
+      <div class="legenda" id="legenda"></div>
+      <p class="regra-limite">Pontuações de 3 a 5 contam como alto. De 1 a 2 contam como baixo.</p>
+    </section>
+  </main>
+
+  <!-- Lista de prioridades -->
+  <section class="cartao" aria-labelledby="listaTitulo">
+    <div class="cabeca-cartao">
+      <div>
+        <h2 id="listaTitulo">Lista de prioridades</h2>
+        <p class="sub" id="listaSub">Ordenada por quadrante e, dentro de cada um, pela pontuação.</p>
+      </div>
+      <div class="barra-ferramentas">
+        <label for="filtro" class="dica" style="position:absolute;left:-9999px">Filtrar por categoria</label>
+        <select id="filtro"></select>
+        <button type="button" class="btn btn-sec btn-pequeno" id="btnCopiar">Copiar CSV</button>
+        <button type="button" class="btn btn-sec btn-pequeno" id="btnExemplo">Repor exemplo</button>
+        <button type="button" class="btn btn-perigo btn-pequeno" id="btnLimpar">Apagar tudo</button>
+      </div>
+    </div>
+    <div id="lista"></div>
+    <div class="painel-csv" id="painelCsv" hidden>
+      <label for="csvTexto" class="dica">Não foi possível copiar automaticamente. Seleciona o texto e copia.</label>
+      <textarea id="csvTexto" readonly></textarea>
+      <div><button type="button" class="btn btn-sec btn-pequeno" id="btnFecharCsv">Fechar</button></div>
+    </div>
+    <p class="estado-guardar" id="estadoGuardar"></p>
+  </section>
+
+  <footer>Feito pela JUNITEC</footer>
+</div>
+
+<div class="aviso-toast" id="toast" role="status" hidden></div>
+
+<script>
+/* =========================================================
+   Estado
+   ========================================================= */
+const CHAVE = 'junitec-matriz-impacto-esforco-v1';
+
+const QUADRANTES = {
+  q1: { nome: 'Fazer primeiro',          curto: 'Fazer primeiro',  regra: 'Impacto alto · esforço baixo' },
+  q2: { nome: 'Projetos estratégicos',   curto: 'Estratégicos',    regra: 'Impacto alto · esforço alto' },
+  q3: { nome: 'Tarefas secundárias',     curto: 'Secundárias',     regra: 'Impacto baixo · esforço baixo' },
+  q4: { nome: 'Evitar ou reconsiderar',  curto: 'Evitar',          regra: 'Impacto baixo · esforço alto' }
+};
+const ORDEM_QUADRANTES = ['q1', 'q2', 'q3', 'q4'];
+
+// Dados de exemplo (cliente fictício, valores ilustrativos)
+const EXEMPLO = [
+  { nome: 'Automatizar o relatório semanal de vendas', descricao: 'Substituir a compilação manual em Excel por um modelo com dados ligados.', categoria: 'Processos', impacto: 4, esforco: 2 },
+  { nome: 'Questionário de satisfação a clientes', descricao: 'Formulário curto enviado após cada entrega para medir a satisfação.', categoria: 'Cliente', impacto: 3, esforco: 1 },
+  { nome: 'Formação interna em folhas de cálculo', descricao: 'Duas sessões práticas para a equipa administrativa.', categoria: 'Pessoas', impacto: 3, esforco: 2 },
+  { nome: 'Implementar um CRM na equipa comercial', descricao: 'Centralizar contactos, propostas e seguimento de oportunidades.', categoria: 'Tecnologia', impacto: 5, esforco: 4 },
+  { nome: 'Rever o modelo de preços', descricao: 'Analisar margens por linha de produto e propor nova tabela.', categoria: 'Finanças', impacto: 4, esforco: 4 },
+  { nome: 'Reorganizar as pastas partilhadas', descricao: 'Estrutura comum de pastas e regras de nomes de ficheiros.', categoria: 'Processos', impacto: 2, esforco: 1 },
+  { nome: 'Desenvolver uma app própria de encomendas', descricao: 'App móvel feita de raiz para clientes fazerem encomendas.', categoria: 'Tecnologia', impacto: 2, esforco: 5 }
+];
+
+let ideias = [];             // lista de ideias guardadas
+let emEdicao = null;         // id da ideia a ser editada
+let aEliminar = null;        // id com confirmação de eliminação aberta
+let filtro = '';             // categoria filtrada ('' = todas)
+let armazenamentoOk = true;  // localStorage disponível?
+
+/* =========================================================
+   Utilitários
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const reduzirMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function copiaExemplo() {
+  return EXEMPLO.map(i => ({ ...i, id: novoId(), exemplo: true }));
+}
+
+function ideiaValida(i) {
+  return i && typeof i.nome === 'string' && i.nome.trim() !== '' &&
+    Number.isInteger(i.impacto) && i.impacto >= 1 && i.impacto <= 5 &&
+    Number.isInteger(i.esforco) && i.esforco >= 1 && i.esforco <= 5;
+}
+
+/* =========================================================
+   Armazenamento local
+   ========================================================= */
+function carregar() {
+  try {
+    const bruto = localStorage.getItem(CHAVE);
+    if (bruto === null) return copiaExemplo();      // primeira visita
+    const dados = JSON.parse(bruto);
+    if (Array.isArray(dados)) {
+      return dados.filter(ideiaValida).map(i => ({ ...i, id: i.id || novoId() }));
+    }
+  } catch (e) {
+    armazenamentoOk = false;
+  }
+  return copiaExemplo();
+}
+
+function guardar() {
+  try {
+    localStorage.setItem(CHAVE, JSON.stringify(ideias));
+    armazenamentoOk = true;
+  } catch (e) {
+    armazenamentoOk = false;
+  }
+  mostrarEstadoArmazenamento();
+}
+
+function mostrarEstadoArmazenamento() {
+  const nota = $('notaArmazenamento');
+  const estado = $('estadoGuardar');
+  if (armazenamentoOk) {
+    nota.textContent = 'As ideias ficam guardadas neste navegador.';
+    estado.textContent = 'Guardado automaticamente no armazenamento local deste navegador. Noutro computador ou navegador a lista começa vazia.';
+  } else {
+    nota.textContent = 'Este navegador não permite guardar. Os dados perdem-se ao fechar.';
+    estado.textContent = 'O armazenamento local está bloqueado (por exemplo, numa janela privada). Usa "Copiar CSV" para não perder a lista.';
+  }
+}
+
+/* =========================================================
+   Cálculo: quadrante, pontuação e ordenação
+   ========================================================= */
+function quadranteDe(impacto, esforco) {
+  const impactoAlto = impacto >= 3;
+  const esforcoAlto = esforco >= 3;
+  if (impactoAlto && !esforcoAlto) return 'q1';
+  if (impactoAlto && esforcoAlto) return 'q2';
+  if (!impactoAlto && !esforcoAlto) return 'q3';
+  return 'q4';
+}
+
+// Mais impacto e menos esforço dão mais pontos (1 a 25)
+function pontuacaoDe(impacto, esforco) {
+  return impacto * (6 - esforco);
+}
+
+function ordenar() {
+  const lista = ideias.map(i => ({
+    ...i,
+    quadrante: quadranteDe(i.impacto, i.esforco),
+    pontuacao: pontuacaoDe(i.impacto, i.esforco)
+  }));
+  lista.sort((a, b) =>
+    ORDEM_QUADRANTES.indexOf(a.quadrante) - ORDEM_QUADRANTES.indexOf(b.quadrante) ||
+    b.pontuacao - a.pontuacao ||
+    b.impacto - a.impacto ||
+    a.esforco - b.esforco ||
+    a.nome.localeCompare(b.nome, 'pt')
+  );
+  lista.forEach((i, n) => { i.posicao = n + 1; });
+  return lista;
+}
+
+const passaFiltro = i => !filtro || i.categoria === filtro;
+
+/* =========================================================
+   Interface: destaque
+   ========================================================= */
+function desenharDestaque(ordenadas) {
+  const topo = ordenadas[0];
+  if (!topo) {
+    $('destNome').textContent = 'Ainda sem ideias';
+    $('destDetalhe').textContent = 'Adiciona uma ideia no formulário para ver a prioridade.';
+    $('destNumero').textContent = '–';
+    $('destQuadrante').innerHTML = '&nbsp;';
+    return;
+  }
+  $('destNome').textContent = topo.nome;
+  $('destDetalhe').textContent = `${topo.categoria} · Impacto ${topo.impacto} · Esforço ${topo.esforco}`;
+  $('destNumero').textContent = topo.pontuacao;
+  $('destQuadrante').textContent = QUADRANTES[topo.quadrante].nome;
+}
+
+/* =========================================================
+   Interface: matriz 5×5 agrupada em 4 quadrantes
+   ========================================================= */
+function desenharMatriz(ordenadas) {
+  const matriz = $('matriz');
+  const html = [];
+  const rotulos = { '5-1': 'q1', '5-5': 'q2', '1-1': 'q3', '1-5': 'q4' };
+
+  for (let imp = 5; imp >= 1; imp--) {
+    html.push(`<div class="tick" aria-hidden="true">${imp}</div>`);
+    for (let esf = 1; esf <= 5; esf++) {
+      const q = quadranteDe(imp, esf);
+      const classes = ['celula', q];
+      if (esf === 3) classes.push('fronteira-x');
+      if (imp === 2) classes.push('fronteira-y');
+      const rotulo = rotulos[`${imp}-${esf}`];
+      const pontos = ordenadas
+        .filter(i => i.impacto === imp && i.esforco === esf && passaFiltro(i))
+        .map(i => `<button type="button" class="ponto ${q}${i.id === emEdicao ? ' ativo' : ''}" data-id="${i.id}"
+            title="${i.posicao}. ${esc(i.nome)} (impacto ${imp}, esforço ${esf})"
+            aria-label="${i.posicao}. ${esc(i.nome)}, impacto ${imp}, esforço ${esf}. Editar">${i.posicao}</button>`)
+        .join('');
+      html.push(`<div class="${classes.join(' ')}">
+        ${rotulo ? `<span class="rotulo-q">${QUADRANTES[rotulo].curto}</span>` : ''}
+        <div class="pontos">${pontos}</div></div>`);
+    }
+  }
+  html.push('<div></div>');
+  for (let esf = 1; esf <= 5; esf++) html.push(`<div class="tick" aria-hidden="true">${esf}</div>`);
+  matriz.innerHTML = html.join('');
+}
+
+function desenharLegenda(ordenadas) {
+  $('legenda').innerHTML = ORDEM_QUADRANTES.map(q => {
+    const n = ordenadas.filter(i => i.quadrante === q && passaFiltro(i)).length;
+    return `<div class="leg-item ${q}">
+      <span class="amostra ${q}" aria-hidden="true"></span>
+      <span class="leg-nome">${QUADRANTES[q].nome}</span>
+      <span class="leg-num" aria-label="${n} ideias">${n}</span>
+      <span class="leg-regra">${QUADRANTES[q].regra}</span>
+    </div>`;
+  }).join('');
+}
+
+/* =========================================================
+   Interface: filtro e lista de prioridades
+   ========================================================= */
+function desenharFiltro() {
+  const categorias = [...new Set(ideias.map(i => i.categoria))].sort((a, b) => a.localeCompare(b, 'pt'));
+  if (filtro && !categorias.includes(filtro)) filtro = '';
+  $('filtro').innerHTML = `<option value="">Todas as categorias</option>` +
+    categorias.map(c => `<option value="${esc(c)}"${c === filtro ? ' selected' : ''}>${esc(c)}</option>`).join('');
+}
+
+function htmlItem(i, melhorId) {
+  const q = QUADRANTES[i.quadrante];
+  const acoes = aEliminar === i.id
+    ? `<span class="confirmar">Eliminar esta ideia?</span>
+       <button type="button" class="btn btn-perigo armado btn-pequeno" data-acao="confirmar" data-id="${i.id}">Sim, eliminar</button>
+       <button type="button" class="btn btn-sec btn-pequeno" data-acao="manter" data-id="${i.id}">Não</button>`
+    : `<button type="button" class="btn btn-sec btn-pequeno" data-acao="editar" data-id="${i.id}">Editar</button>
+       <button type="button" class="btn btn-perigo btn-pequeno" data-acao="eliminar" data-id="${i.id}">Eliminar</button>`;
+  return `<li class="item${i.id === emEdicao ? ' ativo' : ''}">
+    <span class="rank ${i.quadrante}" aria-label="Posição ${i.posicao}">${i.posicao}</span>
+    <div style="min-width:0">
+      <h4>${esc(i.nome)}</h4>
+      ${i.descricao ? `<p class="desc">${esc(i.descricao)}</p>` : ''}
+      <div class="meta">
+        ${i.id === melhorId ? '<span class="chip melhor">Maior impacto com menor esforço</span>' : ''}
+        <span class="chip ${i.quadrante}">${q.nome}</span>
+        <span class="chip">${esc(i.categoria)}</span>
+        <span class="chip">Impacto ${i.impacto} · Esforço ${i.esforco}</span>
+        ${i.exemplo ? '<span class="chip exemplo">Exemplo</span>' : ''}
+      </div>
+    </div>
+    <div class="lado">
+      <span class="pontuacao" title="Pontuação de prioridade">${i.pontuacao}<small>/25</small></span>
+      <div class="acoes-item">${acoes}</div>
+    </div>
+  </li>`;
+}
+
+function desenharLista(ordenadas) {
+  const caixa = $('lista');
+  if (ideias.length === 0) {
+    caixa.innerHTML = '<div class="vazio">Ainda não há ideias. Adiciona a primeira no formulário ou carrega em "Repor exemplo".</div>';
+    $('listaSub').textContent = 'Ordenada por quadrante e, dentro de cada um, pela pontuação.';
+    return;
+  }
+  const visiveis = ordenadas.filter(passaFiltro);
+  $('listaSub').textContent = filtro
+    ? `${visiveis.length} de ${ideias.length} ideias na categoria ${filtro}.`
+    : `${ideias.length} ideias, ordenadas por quadrante e pela pontuação.`;
+  if (visiveis.length === 0) {
+    caixa.innerHTML = '<div class="vazio">Nenhuma ideia nesta categoria.</div>';
+    return;
+  }
+  // A melhor relação impacto/esforço entre as ideias visíveis
+  const melhor = [...visiveis].sort((a, b) => b.pontuacao - a.pontuacao || b.impacto - a.impacto)[0];
+  caixa.innerHTML = ORDEM_QUADRANTES.map(q => {
+    const doGrupo = visiveis.filter(i => i.quadrante === q);
+    if (!doGrupo.length) return '';
+    return `<div class="grupo">
+      <h3 class="grupo-titulo"><span class="amostra ${q}" aria-hidden="true"></span>${QUADRANTES[q].nome}
+        <span class="contagem">· ${doGrupo.length}</span></h3>
+      <ol class="lista">${doGrupo.map(i => htmlItem(i, melhor.id)).join('')}</ol>
+    </div>`;
+  }).join('');
+}
+
+// Atualiza toda a interface a partir do estado
+function desenharTudo() {
+  const ordenadas = ordenar();
+  desenharDestaque(ordenadas);
+  desenharFiltro();
+  desenharMatriz(ordenadas);
+  desenharLegenda(ordenadas);
+  desenharLista(ordenadas);
+}
+
+/* =========================================================
+   Formulário: escalas, pré-visualização, adicionar, editar
+   ========================================================= */
+function criarEscala(contentor, nome) {
+  let html = '';
+  for (let v = 1; v <= 5; v++) {
+    html += `<div><input type="radio" name="${nome}" id="${nome}-${v}" value="${v}"${v === 3 ? ' checked' : ''}>
+      <label for="${nome}-${v}">${v}</label></div>`;
+  }
+  contentor.innerHTML = html;
+}
+
+function valorEscala(nome) {
+  const marcado = document.querySelector(`input[name="${nome}"]:checked`);
+  return marcado ? Number(marcado.value) : 3;
+}
+
+function definirEscala(nome, valor) {
+  const r = $(`${nome}-${valor}`);
+  if (r) r.checked = true;
+}
+
+function atualizarPrevia() {
+  const imp = valorEscala('impacto');
+  const esf = valorEscala('esforco');
+  const q = quadranteDe(imp, esf);
+  $('previa').innerHTML = `<span class="amostra ${q}" aria-hidden="true"></span>
+    <span>Vai para <strong>${QUADRANTES[q].nome}</strong></span>
+    <span>· Pontuação <strong>${pontuacaoDe(imp, esf)}/25</strong></span>`;
+}
+
+function mostrarErro(msg) {
+  const e = $('erro');
+  e.textContent = msg;
+  e.hidden = !msg;
+}
+
+function limparFormulario() {
+  $('form').reset();
+  definirEscala('impacto', 3);
+  definirEscala('esforco', 3);
+  emEdicao = null;
+  $('formTitulo').textContent = 'Nova ideia';
+  $('formSub').textContent = 'Descreve a ideia e avalia-a de 1 a 5.';
+  $('btnSubmeter').textContent = 'Adicionar ideia';
+  $('btnCancelar').hidden = true;
+  mostrarErro('');
+  atualizarPrevia();
+}
+
+function submeter(evento) {
+  evento.preventDefault();
+  const nome = $('nome').value.trim();
+  if (!nome) {
+    mostrarErro('Escreve um nome para a ideia.');
+    $('nome').focus();
+    return;
+  }
+  const dados = {
+    nome,
+    descricao: $('descricao').value.trim(),
+    categoria: $('categoria').value.trim() || 'Geral',
+    impacto: valorEscala('impacto'),
+    esforco: valorEscala('esforco')
+  };
+
+  if (emEdicao) {
+    const idx = ideias.findIndex(i => i.id === emEdicao);
+    if (idx !== -1) ideias[idx] = { ...ideias[idx], ...dados, exemplo: false };
+    aviso('Alterações guardadas.');
+  } else {
+    ideias.push({ ...dados, id: novoId(), exemplo: false });
+    aviso('Ideia adicionada.');
+  }
+  guardar();
+  limparFormulario();
+  desenharTudo();
+}
+
+function editar(id) {
+  const ideia = ideias.find(i => i.id === id);
+  if (!ideia) return;
+  emEdicao = id;
+  aEliminar = null;
+  $('nome').value = ideia.nome;
+  $('descricao').value = ideia.descricao || '';
+  $('categoria').value = ideia.categoria || '';
+  definirEscala('impacto', ideia.impacto);
+  definirEscala('esforco', ideia.esforco);
+  $('formTitulo').textContent = 'Editar ideia';
+  $('formSub').textContent = 'Altera os campos e guarda. A matriz atualiza logo.';
+  $('btnSubmeter').textContent = 'Guardar alterações';
+  $('btnCancelar').hidden = false;
+  mostrarErro('');
+  atualizarPrevia();
+  desenharTudo();
+  $('cartaoForm').scrollIntoView({ behavior: reduzirMovimento() ? 'auto' : 'smooth', block: 'start' });
+  $('nome').focus({ preventScroll: true });
+}
+
+function eliminar(id) {
+  ideias = ideias.filter(i => i.id !== id);
+  if (emEdicao === id) limparFormulario();
+  aEliminar = null;
+  guardar();
+  desenharTudo();
+  aviso('Ideia eliminada.');
+}
+
+/* =========================================================
+   Exportar, repor e apagar
+   ========================================================= */
+function gerarCSV() {
+  const campo = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const linhas = [['Posição', 'Nome', 'Descrição', 'Categoria', 'Impacto', 'Esforço', 'Pontuação', 'Quadrante'].map(campo).join(';')];
+  ordenar().filter(passaFiltro).forEach(i => {
+    linhas.push([i.posicao, i.nome, i.descricao, i.categoria, i.impacto, i.esforco, i.pontuacao, QUADRANTES[i.quadrante].nome].map(campo).join(';'));
+  });
+  return linhas.join('\n');
+}
+
+async function copiarCSV() {
+  const texto = gerarCSV();
+  try {
+    await navigator.clipboard.writeText(texto);
+    $('painelCsv').hidden = true;
+    aviso('CSV copiado. Cola numa folha de cálculo.');
+  } catch (e) {
+    // Alternativa: mostrar o texto para copiar à mão
+    const area = $('csvTexto');
+    area.value = texto;
+    $('painelCsv').hidden = false;
+    area.focus();
+    area.select();
+  }
+}
+
+// Botões que pedem um segundo clique para confirmar
+function confirmarDuplo(botao, textoOriginal, textoConfirmar, acao) {
+  if (botao.dataset.armado === '1') {
+    clearTimeout(Number(botao.dataset.temporizador));
+    botao.dataset.armado = '';
+    botao.textContent = textoOriginal;
+    botao.classList.remove('armado');
+    acao();
+    return;
+  }
+  botao.dataset.armado = '1';
+  botao.textContent = textoConfirmar;
+  botao.classList.add('armado');
+  botao.dataset.temporizador = setTimeout(() => {
+    botao.dataset.armado = '';
+    botao.textContent = textoOriginal;
+    botao.classList.remove('armado');
+  }, 4000);
+}
+
+function reporExemplo() {
+  ideias = copiaExemplo();
+  filtro = '';
+  aEliminar = null;
+  limparFormulario();
+  guardar();
+  desenharTudo();
+  aviso('Exemplo reposto.');
+}
+
+function apagarTudo() {
+  ideias = [];
+  filtro = '';
+  aEliminar = null;
+  limparFormulario();
+  guardar();
+  desenharTudo();
+  aviso('Todas as ideias foram apagadas.');
+}
+
+/* =========================================================
+   Aviso temporário
+   ========================================================= */
+let temporizadorAviso;
+function aviso(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(temporizadorAviso);
+  temporizadorAviso = setTimeout(() => { t.hidden = true; }, 2400);
+}
+
+/* =========================================================
+   Arranque e eventos
+   ========================================================= */
+function iniciar() {
+  criarEscala($('escalaImpacto'), 'impacto');
+  criarEscala($('escalaEsforco'), 'esforco');
+  ideias = carregar();
+  mostrarEstadoArmazenamento();
+  atualizarPrevia();
+  desenharTudo();
+
+  $('form').addEventListener('submit', submeter);
+  $('form').addEventListener('change', atualizarPrevia);
+  $('nome').addEventListener('input', () => mostrarErro(''));
+  $('btnCancelar').addEventListener('click', () => { limparFormulario(); desenharTudo(); });
+
+  // Pontos da matriz abrem a edição
+  $('matriz').addEventListener('click', e => {
+    const ponto = e.target.closest('.ponto');
+    if (ponto) editar(ponto.dataset.id);
+  });
+
+  // Ações da lista
+  $('lista').addEventListener('click', e => {
+    const botao = e.target.closest('button[data-acao]');
+    if (!botao) return;
+    const id = botao.dataset.id;
+    const acao = botao.dataset.acao;
+    if (acao === 'editar') editar(id);
+    if (acao === 'eliminar') { aEliminar = id; desenharTudo(); }
+    if (acao === 'manter') { aEliminar = null; desenharTudo(); }
+    if (acao === 'confirmar') eliminar(id);
+  });
+
+  $('filtro').addEventListener('change', e => { filtro = e.target.value; desenharTudo(); });
+  $('btnCopiar').addEventListener('click', copiarCSV);
+  $('btnFecharCsv').addEventListener('click', () => { $('painelCsv').hidden = true; });
+  $('btnExemplo').addEventListener('click', e =>
+    confirmarDuplo(e.currentTarget, 'Repor exemplo', 'Substituir a lista? Clica de novo', reporExemplo));
+  $('btnLimpar').addEventListener('click', e =>
+    confirmarDuplo(e.currentTarget, 'Apagar tudo', 'Apagar todas? Clica de novo', apagarTudo));
+}
+
+iniciar();
+</script>
+</body>
+</html>
